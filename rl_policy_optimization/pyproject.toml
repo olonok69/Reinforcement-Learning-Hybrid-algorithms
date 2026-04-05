@@ -1,0 +1,18 @@
+[project]
+name = "rl-policy"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "gymnasium[classic-control]>=1.2.3",
+    "numpy>=2.4.2",
+    "torch>=2.10.0",
+    "stable-baselines3[extra]",
+    "sb3-contrib",
+    "moviepy",
+    "matplotlib",
+    "pandas",
+    "bayesian-optimization",
+    "scikit-learn",
+]
