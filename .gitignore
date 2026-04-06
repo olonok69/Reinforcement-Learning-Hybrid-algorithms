@@ -137,3 +137,4 @@ doc/Reinforcement Learning AI Policy Optimization.xps
 outputs/
 uv.lock
 .vscode/settings.json
+rl_policy_optimization/
