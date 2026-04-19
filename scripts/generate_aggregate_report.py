@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Generate plots and markdown report from aggregate_summary.json")
     parser.add_argument("--input", default="outputs/aggregate_summary.json")
     parser.add_argument("--output-dir", default="outputs/report")
