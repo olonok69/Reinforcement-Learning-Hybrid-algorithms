@@ -186,14 +186,14 @@ Configuración: [`DDPGConfig`](../benchmarks/ddpg.py) — `warmup_steps=5000`,
 Seguir la actualización en el orden en que ejecuta en el código:
 
 1. **Muestrear un mini-batch** `(s, a, r, s', done)` del replay buffer.
-2. **Calcular el objetivo de Bellman** (con target networks, sin gradiente):
-   $$y = r + \gamma (1 - \text{done}) \cdot Q_{\text{target}}(s', \mu_{\text{target}}(s'))$$
-3. **Actualizar el critic** — minimizar MSE entre la estimación Q online y el objetivo:
-   $$L_{\text{critic}} = \text{MSE}(Q(s,a),\ y)$$
-4. **Actualizar el actor** — maximizar Q mediante gradient ascent, implementado como minimizar el negativo:
-   $$L_{\text{actor}} = -\frac{1}{N}\sum Q(s,\ \mu(s))$$
-5. **Soft update** de ambas target networks (Polyak averaging, `tau=0.005`):
-   $$\theta' \leftarrow (1-\tau)\theta' + \tau\theta$$
+2. **Calcular el objetivo de Bellman** (con target networks, sin gradiente):  
+   `y = r + γ·(1-done)·Q_target(s', μ_target(s'))`
+3. **Actualizar el critic** — minimizar MSE entre la estimación Q online y el objetivo:  
+   `L_critic = MSE( Q(s,a), y )`
+4. **Actualizar el actor** — maximizar Q mediante gradient ascent, implementado como minimizar el negativo:  
+   `L_actor = -(1/N)·Σ Q(s, μ(s))`
+5. **Soft update** de ambas target networks (Polyak averaging, `tau=0.005`):  
+   `θ' ← (1-τ)·θ' + τ·θ`
 
 **Referencia de código — bloque de actualización completo:**  
 [`benchmarks/ddpg.py` líneas 118–144](../benchmarks/ddpg.py)
@@ -243,7 +243,7 @@ Los cambios son pequeños en código pero grandes en impacto.
   Con ruido y errores de aproximación, ese sesgo se acumula.
 - TD3 mantiene **dos critics independientes** `Q1` y `Q2`. El objetivo de Bellman usa su
   **mínimo**, no ninguno de los dos por separado:
-  $$y = r + \gamma(1-\text{done})\cdot\min(Q_1^{\text{target}}(s',a'),\ Q_2^{\text{target}}(s',a'))$$
+  `y = r + γ·(1-done)·min( Q1_target(s',a'), Q2_target(s',a') )`
 - Min-de-dos es un estimador pesimista, pero el pesimismo es más seguro que el optimismo cuando
   el actor explota continuamente los errores del critic.
 
@@ -302,8 +302,10 @@ if update_step % cfg.policy_delay == 0:
   Si el critic tiene un pico agudo en esa acción, el Q target es artificialmente elevado.
 - TD3 añade **ruido Gaussiano recortado** a la acción target, promediando efectivamente el Q target
   sobre una pequeña vecindad de acciones — regularizando la superficie de Q:
-  $$a' = \text{clip}\!\left(\mu_{\text{target}}(s') + \epsilon,\ -a_{\max},\ a_{\max}\right), \quad
-    \epsilon = \text{clip}\!\left(\mathcal{N}(0,\sigma),\ -c,\ c\right)$$
+  ```
+  a' = clip( μ_target(s') + ε,  -a_max, a_max )
+  ε  = clip( N(0, σ),  -c, c )
+  ```
 
 **Valores de configuración:** `policy_noise=0.2`, `noise_clip=0.5`.
 
@@ -347,22 +349,22 @@ Gaussiana.
 
 **Puntos a desarrollar:**
 
-RL estándar maximiza retorno acumulado:
-$$J(\pi) = \mathbb{E}\!\left[\sum_t \gamma^t r_t\right]$$
+RL estándar maximiza retorno acumulado:  
+`J(π) = E[ Σ_t γᵗ·rₜ ]`
 
-SAC aumenta esto con la entropía de la policy $\mathcal{H}(\pi(\cdot|s))$, controlada por la temperatura `alpha`:
-$$J_{\text{SAC}}(\pi) = \mathbb{E}\!\left[\sum_t \gamma^t \bigl(r_t + \alpha\,\mathcal{H}(\pi(\cdot|s_t))\bigr)\right]$$
+SAC aumenta esto con la entropía de la policy `H(π(·|s))`, controlada por la temperatura `alpha`:  
+`J_SAC(π) = E[ Σ_t γᵗ·(rₜ + α·H(π(·|sₜ))) ]`
 
 Efecto de `alpha`:
 - `alpha` alto → fuerte presión a ser estocástico → más exploración, convergencia más lenta.
 - `alpha` bajo → principalmente orientado a la recompensa → se aproxima a TD3/DDPG.
 - `alpha=0` → equivale a una policy determinista dura (similar a DDPG pero con twin critics).
 
-El término de entropía se propaga al **objetivo de Bellman** del critic:
-$$y = r + \gamma(1-\text{done})\left[\min(Q_1^{\text{target}},Q_2^{\text{target}})(s',a') - \alpha\log\pi(a'|s')\right]$$
+El término de entropía se propaga al **objetivo de Bellman** del critic:  
+`y = r + γ·(1-done)·[ min(Q1_target,Q2_target)(s',a') - α·log π(a'|s') ]`
 
-Y al **actor loss**:
-$$L_{\text{actor}} = \mathbb{E}_{a\sim\pi}\!\left[\alpha\log\pi(a|s) - \min(Q_1,Q_2)(s,a)\right]$$
+Y al **actor loss**:  
+`L_actor = E_{a~π}[ α·log π(a|s) - min(Q1,Q2)(s,a) ]`
 
 #### 40–47 min — GaussianActor: sampling estocástico con tanh squashing
 
@@ -375,7 +377,7 @@ $$L_{\text{actor}} = \mathbb{E}_{a\sim\pi}\!\left[\alpha\log\pi(a|s) - \min(Q_1,
   La reparametrización (`rsample`) hace la muestra diferenciable, permitiendo que los gradientes
   fluyan a través de ella.
 - **Corrección del log-probability por tanh squashing:**  
-  $$\log\pi(a|s) = \log\mathcal{N}(z|\mu,\sigma) - \sum_i\log(1 - \tanh^2(z_i) + \epsilon)$$
+  `log π(a|s) = log N(z|μ,σ) - Σᵢ log(1 - tanh²(zᵢ) + ε)`
   Esta es la fórmula de cambio de variables. Sin ella, `log_prob` sería incorrecto y la
   estimación de entropía estaría equivocada. El `1e-6` protege contra `log(0)`.
 

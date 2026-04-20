@@ -181,14 +181,14 @@ Config reference: [`DDPGConfig`](../benchmarks/ddpg.py) — `warmup_steps=5000`,
 Step through the update in the order it executes in the code:
 
 1. **Sample a mini-batch** `(s, a, r, s', done)` from the replay buffer.
-2. **Compute Bellman target** (with target networks, no gradient):
-   $$y = r + \gamma (1 - \text{done}) \cdot Q_{\text{target}}(s', \mu_{\text{target}}(s'))$$
-3. **Update critic** — minimise MSE between online Q-estimate and target:
-   $$L_{\text{critic}} = \text{MSE}(Q(s,a),\ y)$$
-4. **Update actor** — maximise Q via gradient ascent on Q, implemented as minimising the negative:
-   $$L_{\text{actor}} = -\frac{1}{N}\sum Q(s,\ \mu(s))$$
-5. **Soft update** both target networks (Polyak averaging, `tau=0.005`):
-   $$\theta' \leftarrow (1-\tau)\theta' + \tau\theta$$
+2. **Compute Bellman target** (with target networks, no gradient):  
+   `y = r + γ·(1-done)·Q_target(s', μ_target(s'))`
+3. **Update critic** — minimise MSE between online Q-estimate and target:  
+   `L_critic = MSE( Q(s,a), y )`
+4. **Update actor** — maximise Q via gradient ascent, implemented as minimising the negative:  
+   `L_actor = -(1/N)·Σ Q(s, μ(s))`
+5. **Soft update** both target networks (Polyak averaging, `tau=0.005`):  
+   `θ' ← (1-τ)·θ' + τ·θ`
 
 **Code pointer — full update block:**  
 [`benchmarks/ddpg.py` lines 118–144](../benchmarks/ddpg.py)
@@ -238,7 +238,7 @@ changes are small in code but large in impact.
   With noise and approximation errors this bias compounds.
 - TD3 maintains **two independent critics** `Q1` and `Q2`. The Bellman target uses their
   **minimum**, not either value alone:
-  $$y = r + \gamma(1-\text{done})\cdot\min(Q_1^{\text{target}}(s',a'),\ Q_2^{\text{target}}(s',a'))$$
+  `y = r + γ·(1-done)·min( Q1_target(s',a'), Q2_target(s',a') )`
 - Min-of-two is a pessimistic estimator, but pessimism is safer than optimism when the actor
   is continually exploiting the critic's errors.
 
@@ -296,8 +296,10 @@ if update_step % cfg.policy_delay == 0:
   `s'`. If the critic has a sharp peak at that action, the target Q value is artificially high.
 - TD3 adds **clipped Gaussian noise** to the target action, effectively averaging the target Q
   over a small neighbourhood of actions — regularising the Q surface:
-  $$a' = \text{clip}\!\left(\mu_{\text{target}}(s') + \epsilon,\ -a_{\max},\ a_{\max}\right), \quad
-    \epsilon = \text{clip}\!\left(\mathcal{N}(0,\sigma),\ -c,\ c\right)$$
+  ```
+  a' = clip( μ_target(s') + ε,  -a_max, a_max )
+  ε  = clip( N(0, σ),  -c, c )
+  ```
 
 **Config values:** `policy_noise=0.2`, `noise_clip=0.5`.
 
@@ -341,22 +343,22 @@ distribution.
 
 **Talking points:**
 
-Standard RL maximises cumulative reward:
-$$J(\pi) = \mathbb{E}\!\left[\sum_t \gamma^t r_t\right]$$
+Standard RL maximises cumulative reward:  
+`J(π) = E[ Σ_t γᵗ·rₜ ]`
 
-SAC augments this with the policy entropy $\mathcal{H}(\pi(\cdot|s))$, controlled by temperature `alpha`:
-$$J_{\text{SAC}}(\pi) = \mathbb{E}\!\left[\sum_t \gamma^t \bigl(r_t + \alpha\,\mathcal{H}(\pi(\cdot|s_t))\bigr)\right]$$
+SAC augments this with the policy entropy `H(π(·|s))`, controlled by temperature `alpha`:  
+`J_SAC(π) = E[ Σ_t γᵗ·(rₜ + α·H(π(·|sₜ))) ]`
 
 Effect of `alpha`:
 - High `alpha` → strong pressure to be stochastic → more exploration, slower convergence.
 - Low `alpha` → mostly reward-driven → resembles TD3/DDPG.
 - `alpha=0` → reduces to hard deterministic policy (similar to DDPG but with twin critics).
 
-The entropy term then propagates into the **Bellman target** for the critic:
-$$y = r + \gamma(1-\text{done})\left[\min(Q_1^{\text{target}},Q_2^{\text{target}})(s',a') - \alpha\log\pi(a'|s')\right]$$
+The entropy term then propagates into the **Bellman target** for the critic:  
+`y = r + γ·(1-done)·[ min(Q1_target,Q2_target)(s',a') - α·log π(a'|s') ]`
 
-And into the **actor loss**:
-$$L_{\text{actor}} = \mathbb{E}_{a\sim\pi}\!\left[\alpha\log\pi(a|s) - \min(Q_1,Q_2)(s,a)\right]$$
+And into the **actor loss**:  
+`L_actor = E_{a~π}[ α·log π(a|s) - min(Q1,Q2)(s,a) ]`
 
 #### 40–47 min — GaussianActor: stochastic action sampling with tanh squashing
 
@@ -368,7 +370,7 @@ $$L_{\text{actor}} = \mathbb{E}_{a\sim\pi}\!\left[\alpha\log\pi(a|s) - \min(Q_1,
   `action = tanh(z) * max_action`  
   Reparameterisation (`rsample`) makes the sample differentiable, so gradients flow through it.
 - **Log-probability correction for tanh squashing:**  
-  $$\log\pi(a|s) = \log\mathcal{N}(z|\mu,\sigma) - \sum_i\log(1 - \tanh^2(z_i) + \epsilon)$$
+  `log π(a|s) = log N(z|μ,σ) - Σᵢ log(1 - tanh²(zᵢ) + ε)`
   This is the change-of-variables formula. Without it `log_prob` would be incorrect and the
   entropy estimate would be wrong. The `1e-6` guards against `log(0)`.
 

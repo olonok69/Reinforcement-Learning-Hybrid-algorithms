@@ -138,3 +138,5 @@ outputs/
 uv.lock
 .vscode/settings.json
 rl_policy_optimization/
+*.pdf
+*.xps

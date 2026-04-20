@@ -258,7 +258,7 @@ def run_ddpg(config: DDPGConfig | None = None) -> list[float]:
 
         for _ in range(cfg.max_steps):
             global_step += 1
-
+            # Convert state to a NumPy array of type float32 for the networks and replay buffer.
             state_arr = np.asarray(state, dtype=np.float32)
 
             # --- Action selection ---
