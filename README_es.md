@@ -11,6 +11,7 @@ compartido de agregación multi-seed y generación automática de reportes.
 
 ---
 
+
 ## Estructura del repositorio
 
 ```
